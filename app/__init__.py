@@ -1,4 +1,7 @@
-from .main import app
-from . import main
+from .main import (
+    app,
+    limiter,
+)
+from . import config
 from . import database
 from . import routers

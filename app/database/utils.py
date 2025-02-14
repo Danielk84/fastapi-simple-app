@@ -6,13 +6,16 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from sqlmodel import Session, select
 
-
-from app import main
-from app.database import UserBase, UserLogin
+from app.config import (
+    SECRET_KEY,
+    TOKEN_ALGORITHM,
+    TOKEN_EXPIRED_TIME,
+)
+from app.database import engine, UserBase, UserLogin, UserPermission
 
 
 def get_session():
-    with Session(main.engine) as session:
+    with Session(engine) as session:
         yield session
 
 
@@ -26,8 +29,8 @@ def password_hasher(passwd: str) -> bytes:
     return pw_hash
 
 
-def auth_password(login: UserLogin) -> bool:
-    with Session(main.engine) as session:
+def auth_password(login: UserLogin) -> UserBase:
+    with Session(engine) as session:
         try:
             user = session.exec(
                 select(UserBase).where(UserBase.username==login.username,)
@@ -43,18 +46,21 @@ def auth_password(login: UserLogin) -> bool:
             )
 
 
+AuthDep = Annotated[UserBase, Depends(auth_password)]
+
+
 def create_token(user: UserBase) -> str:
     try:
         token = jwt.encode(
             payload={
-                "user_id": user.id,
+                "user_id": str(user.id),
                 "username": user.username,
                 "exp": 
                     datetime.now(timezone.utc) + 
-                    timedelta(minutes=main.TOKEN_EXPIRED_TIME), 
+                    timedelta(minutes=TOKEN_EXPIRED_TIME), 
             },
-            key=main.SECRET_KEY,
-            algorithm=main.TOKEN_ALGORITHM,
+            key=SECRET_KEY,
+            algorithm=TOKEN_ALGORITHM,
         )
         return token
     except jwt.PyJWKError:
@@ -65,8 +71,8 @@ def check_token(token: str) -> UserBase:
     try:
         payload = jwt.decode(
             token=token,
-            key=main.SECRET_KEY,
-            algorithms=main.TOKEN_ALGORITHM,
+            key=SECRET_KEY,
+            algorithms=TOKEN_ALGORITHM,
         )
     except (
         jwt.InvalidTokenError,
@@ -80,7 +86,7 @@ def check_token(token: str) -> UserBase:
     except jwt.PyJWKError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    with Session(main.engine) as session:
+    with Session(engine) as session:
         user = session.exec(
             select(UserBase).
                 where(UserBase.id == payload["user_id"]).
@@ -94,3 +100,25 @@ def check_token(token: str) -> UserBase:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return user
+
+
+def create_user(
+    user_login: UserLogin,
+    permission: UserPermission = UserPermission.guest,
+    f_name: str | None = None,
+    l_name: str | None = None,
+) -> None:
+    try:
+        password_hash = password_hasher(user_login.password)
+        user = UserBase(
+            username=user_login.username,
+            password_hash=password_hash,
+            permission=permission,
+            f_name=f_name,
+            l_name=l_name,
+        )
+        with Session(engine) as session:
+            session.add(user)
+            session.commit()
+    except:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
