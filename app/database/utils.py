@@ -67,12 +67,10 @@ def create_token(user: UserBase) -> str:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,)
 
 
-def check_token(token: str) -> UserBase:
+def auth_token(token: str) -> UserBase:
     try:
         payload = jwt.decode(
-            token=token,
-            key=SECRET_KEY,
-            algorithms=TOKEN_ALGORITHM,
+            token, SECRET_KEY, algorithms=[TOKEN_ALGORITHM],
         )
     except (
         jwt.InvalidTokenError,
