@@ -24,7 +24,7 @@ class ArticleList(BaseModel):
     last_mod: datetime
 
 
-class ArticleUpdate(BaseModel):
+class ArticleBase(BaseModel):
     title: str = PField(max_length=64)
     last_mod: datetime = PField(default_factory=datetime.now)
     author: str
@@ -47,18 +47,25 @@ class UserBase(SQLModel, table=True):
     permission: UserPermission = Field(default=UserPermission.guest)
 
 
-class UserLogin(BaseModel):
-    username: str = PField(max_length=32)
+
+class BasePassword(BaseModel):
     password: str = PField(min_length=8, max_length=32)
 
 
+class UserLogin(BasePassword):
+    username: str = PField(max_length=32)
+
+
+
 class UserInfo(BaseModel):
+    id: uuid.UUID
     username: str
     f_name: str | None = PField(default=None)
     l_name: str | None = PField(default=None)
 
 
 class UserPermissionInfo(BaseModel):
+    id: uuid.UUID
     username: str
     permission: UserPermission
 

@@ -1,9 +1,11 @@
+import uuid
 from typing import Annotated
 from datetime import datetime, timezone,timedelta
 
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Security
+from fastapi.security import APIKeyHeader
 from sqlmodel import Session, select
 
 from app.config import (
@@ -67,7 +69,10 @@ def create_token(user: UserBase) -> str:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,)
 
 
-def auth_token(token: str) -> UserBase:
+auth_header_scheme = APIKeyHeader(name="Authorization")
+
+
+def auth_token(token: Annotated[str, Security(auth_header_scheme)]) -> UserBase:
     try:
         payload = jwt.decode(
             token, SECRET_KEY, algorithms=[TOKEN_ALGORITHM],
@@ -81,13 +86,13 @@ def auth_token(token: str) -> UserBase:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.PyJWKError:
+    except jwt.PyJWKError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     with Session(engine) as session:
         user = session.exec(
             select(UserBase).
-                where(UserBase.id == payload["user_id"]).
+                where(UserBase.id == uuid.UUID(payload["user_id"])).
                 where(UserBase.username == payload["username"])
         ).one()
 
@@ -100,6 +105,9 @@ def auth_token(token: str) -> UserBase:
         return user
 
 
+TokenValidateDep = Annotated[UserBase, Security(auth_token)]
+
+
 def create_user(
     user_login: UserLogin,
     permission: UserPermission = UserPermission.guest,
@@ -107,10 +115,10 @@ def create_user(
     l_name: str | None = None,
 ) -> None:
     try:
-        password_hash = password_hasher(user_login.password)
+        passwd_hash = password_hasher(user_login.password)
         user = UserBase(
             username=user_login.username,
-            password_hash=password_hash,
+            password_hash=passwd_hash,
             permission=permission,
             f_name=f_name,
             l_name=l_name,

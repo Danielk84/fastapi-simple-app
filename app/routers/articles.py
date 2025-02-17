@@ -5,7 +5,6 @@ from datetime import datetime
 from fastapi import (
     APIRouter,
     Depends,
-    Security,
     Body,
     Path,
     HTTPException,
@@ -14,14 +13,13 @@ from fastapi import (
 from sqlmodel import select
 
 from app.config import PAGINATION
-from app.routers import auth_header_scheme
 from app.database import (
     SessionDep,
     Article,
     ArticleList,
-    ArticleUpdate,
+    ArticleBase,
     UserPermission,
-    auth_token,
+    TokenValidateDep,
 )
 
 router = APIRouter(
@@ -36,8 +34,7 @@ async def pagination(page: int) -> int:
 
 @router.get("/")
 async def articles_list(
-    session: SessionDep,
-    page: Annotated[int, Depends(pagination)] = 0,
+    session: SessionDep, page: Annotated[int, Depends(pagination)] = 0,
 ) -> list[ArticleList]:
     return session.exec(
         select(Article.author, Article.id, Article.title, Article.last_mod).
@@ -49,28 +46,25 @@ async def articles_list(
 @router.post("/")
 async def create_article(
     session: SessionDep,
-    article: Article,
-    token: Annotated[str, auth_header_scheme]
-) -> Article:
-    user = auth_token(token)
+    user: TokenValidateDep,
+    content: ArticleBase,
+) -> ArticleBase:
     if user.permission == UserPermission.guest:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
+    article = Article(**content.model_dump())
     try:
         session.add(article)
         session.commit()
-        session.refresh()
 
-        return article
+        return content
     except:
-        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
 
 
 @router.get("/{article_title}/{article_id}")
 async def get_article(
-    session: SessionDep,
-    article_title: Annotated[str, Path()],
-    article_id: Annotated[uuid.UUID, Path()],
+    session: SessionDep, article_title: str, article_id: uuid.UUID,
 ) -> Article:
     try:
         return session.exec(
@@ -85,12 +79,11 @@ async def get_article(
 @router.put("/{article_title}/{article_id}")
 async def update_article(
     session: SessionDep,
+    user: TokenValidateDep,
     article_title: Annotated[str, Path()],
     article_id: Annotated[uuid.UUID, Path()],
-    token: Annotated[str, Security(auth_header_scheme)],
-    mod_article: Annotated[ArticleUpdate, Body()],
-) -> Article:
-    user = auth_token(token)
+    mod_article: Annotated[ArticleBase, Body()],
+) -> ArticleBase:
     if user.permission == UserPermission.guest:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
@@ -109,7 +102,7 @@ async def update_article(
     session.add(article)
     session.commit()
 
-    return article
+    return mod_article
 
 
 @router.delete(
@@ -120,9 +113,8 @@ async def delete_article(
     session: SessionDep,
     article_title: Annotated[str, Path()],
     article_id: Annotated[uuid.UUID, Path()],
-    token: Annotated[str, Security(auth_header_scheme)],
+    user: TokenValidateDep,
 ) -> None:
-    user = auth_token(token)
     if user.permission == UserPermission.guest:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
