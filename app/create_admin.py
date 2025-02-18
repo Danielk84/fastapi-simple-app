@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Session, select
 
-from app.database import UserBase, UserPermission, UserLogin, create_user, engine
+from app.config import engine
+from app.database import UserBase, UserPermission, UserLogin, create_user
 
 
 def get_username() -> str:

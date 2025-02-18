@@ -9,9 +9,9 @@ from .models import (
     UserPermission,
     UserPermissionInfo,
     UserInfo,
-    engine,
 )
 from .utils import (
+    get_session,
     SessionDep,
     password_hasher,
     auth_password,

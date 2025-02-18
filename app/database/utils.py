@@ -12,8 +12,9 @@ from app.config import (
     SECRET_KEY,
     TOKEN_ALGORITHM,
     TOKEN_EXPIRED_TIME,
+    engine,
 )
-from app.database import engine, UserBase, UserLogin, UserPermission
+from app.database import UserBase, UserLogin, UserPermission
 
 
 def get_session():
@@ -113,7 +114,7 @@ def create_user(
     permission: UserPermission = UserPermission.guest,
     f_name: str | None = None,
     l_name: str | None = None,
-) -> None:
+) -> UserBase:
     try:
         passwd_hash = password_hasher(user_login.password)
         user = UserBase(
@@ -126,5 +127,8 @@ def create_user(
         with Session(engine) as session:
             session.add(user)
             session.commit()
+            session.refresh(user)            
+
+            return user
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

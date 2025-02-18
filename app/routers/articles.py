@@ -36,14 +36,19 @@ async def pagination(page: int) -> int:
 async def articles_list(
     session: SessionDep, page: Annotated[int, Depends(pagination)] = 0,
 ) -> list[ArticleList]:
-    return session.exec(
+    articles = session.exec(
         select(Article.author, Article.id, Article.title, Article.last_mod).
             where(Article.pub_date <= datetime.now()).
+            order_by(Article.last_mod.desc()).
             offset(page).limit(PAGINATION)
     ).all()
+    if articles == []:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    return articles
 
 
-@router.post("/")
+@router.post("/", status_code=status.HTTP_202_ACCEPTED)
 async def create_article(
     session: SessionDep,
     user: TokenValidateDep,
@@ -76,7 +81,10 @@ async def get_article(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
-@router.put("/{article_title}/{article_id}")
+@router.put(
+    "/{article_title}/{article_id}",
+    status_code=status.HTTP_202_ACCEPTED
+)
 async def update_article(
     session: SessionDep,
     user: TokenValidateDep,
@@ -99,8 +107,11 @@ async def update_article(
     for key, value in mod_article.model_dump().items():
         setattr(article, key, value)
 
-    session.add(article)
-    session.commit()
+    try:
+        session.delete(article)
+        session.commit()
+    except:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
 
     return mod_article
 
@@ -127,5 +138,8 @@ async def delete_article(
     except:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    session.delete(article)
-    session.commit()
+    try:
+        session.delete(article)
+        session.commit()
+    except:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)

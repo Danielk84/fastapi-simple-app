@@ -10,9 +10,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 
-from app.config import DEBUG, ORIGINS, limiter
+from app.config import DEBUG, ORIGINS, limiter, engine
 from app.routers import articles, users
-from app.database import engine
 
 
 @contextlib.asynccontextmanager

@@ -2,10 +2,9 @@ import uuid
 from enum import Enum
 from datetime import datetime
 
-from sqlmodel import SQLModel, Field, Column, Text, create_engine
+from sqlmodel import SQLModel, Field, Column, Text
 from pydantic import BaseModel, Field as PField
 
-from app.config import DEBUG, SQLITE_URL
 
 class Article(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -68,6 +67,3 @@ class UserPermissionInfo(BaseModel):
     id: uuid.UUID
     username: str
     permission: UserPermission
-
-
-engine = create_engine(SQLITE_URL, echo=DEBUG)
