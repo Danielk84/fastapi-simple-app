@@ -101,7 +101,7 @@ async def change_permission(
 
 @router.get("/info")
 @limiter.limit("20/hour")
-async def users_info(
+async def user_info(
     request: Request, session: SessionDep, user: TokenValidateDep,
 ) -> UserInfo:
     return UserInfo(**user.model_dump()) 

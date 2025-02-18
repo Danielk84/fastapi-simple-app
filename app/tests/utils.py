@@ -1,16 +1,10 @@
 import logging
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session
 
 from app import app
-from app.database import get_session
-
-
-SQLITE_FILE_NAME = "test.db"
-SQLITE_URL = f"sqlite:///./{SQLITE_FILE_NAME}"
-
-engine = create_engine(SQLITE_URL)
+from app.config import engine
 
 
 @pytest.fixture(name="session")
@@ -40,11 +34,3 @@ def logger_fixture():
 
     logger.addHandler(handler)
     return logger
-
-
-def override_get_session():
-    with Session(engine) as session:
-        yield session
-
-
-app.dependency_overrides[get_session] = override_get_session

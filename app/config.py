@@ -8,6 +8,7 @@ from slowapi.util import get_remote_address
 
 DEBUG = False
 
+
 SECRET_KEY = secrets.token_urlsafe(64)
 TOKEN_ALGORITHM = "HS256"
 
@@ -24,9 +25,13 @@ ORIGINS = [
 # the count of object in each page
 PAGINATION = 10
 
-SQLITE_FILE_NAME = "database.db"
+if DEBUG:
+    SQLITE_FILE_NAME = "test.db"
+else:
+    SQLITE_FILE_NAME = "database.db"
+
 SQLITE_URL = f"sqlite:///{SQLITE_FILE_NAME}"
 
-engine = create_engine(SQLITE_URL, echo=DEBUG)
+engine = create_engine(SQLITE_URL)
 
 limiter = Limiter(key_func=get_remote_address)
