@@ -1,5 +1,4 @@
 import secrets
-import ssl
 
 from sqlmodel import create_engine
 from slowapi import Limiter
@@ -14,9 +13,6 @@ TOKEN_ALGORITHM = "HS256"
 
 # Time by minutes
 TOKEN_EXPIRED_TIME = 20
-
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-ssl_context.load_cert_chain(certfile='cert.pem', keyfile='key.pem')
 
 ORIGINS = [
     "https://localhost:8000",

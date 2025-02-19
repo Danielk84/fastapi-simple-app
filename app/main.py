@@ -33,7 +33,6 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
@@ -53,6 +52,4 @@ if __name__ == "__main__":
         app,
         host="localhost",
         port=8000,
-        ssl_certfile="cert.pem",
-        ssl_keyfile="key.pem",
     )
